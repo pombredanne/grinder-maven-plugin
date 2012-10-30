@@ -1,0 +1,16 @@
+.idea
+.svn
+.DS_Store
+releases
+target
+tmp
+.classpath
+.project
+.settings
+out
+*.ipr
+*.iws
+*.iml
+.springBeans
+*.swp
+.pmd
