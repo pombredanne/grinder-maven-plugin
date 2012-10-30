@@ -250,7 +250,6 @@ public abstract class GrinderPropertiesConfigure extends AbstractMojo
 
 	private void setClassPath() {
 		// Print the list of plugin dependencies
-		logger.debug("------------------------------------------------------------");
 		logger.debug("------------------PROJECT DEPENDENCIES----------------------");
 
 		Artifact a = null;
@@ -265,8 +264,8 @@ public abstract class GrinderPropertiesConfigure extends AbstractMojo
 				&& ( !a.getArtifactId().contains("jython")
 					 || (a.getArtifactId().contains("jython") && a.getVersion().equals(getJythonVersion())))) {
 				
-				System.out.println("GroupId: " + a.getGroupId() + "\nArtifactId: "
-						+ a.getArtifactId() + "\nVersino: " + a.getVersion());
+				logger.debug("GroupId: {}  ArtifactId: {}  Version: {} " , 
+						new Object[]{a.getGroupId(), a.getArtifactId(),a.getVersion()});
 				try {
 					grinderJar = MavenUtilities.getPluginAbsolutePath(
 														a.getGroupId(), 
@@ -314,6 +313,21 @@ public abstract class GrinderPropertiesConfigure extends AbstractMojo
 		logger.debug("--- Classpath Now configured");
 	}
 
+	/*
+	 * slf4j-style message with string to replace
+	 */
+	private void logConfigErrorAndExit(String message, Object ... replaceVars) {
+		logger.error("");
+		logger.error(" ----------------------------");
+		logger.error("|   Configuration ERROR!!!   |");
+		logger.error(" ----------------------------");
+		logger.error("");
+		logger.error(message, replaceVars);
+		logger.error("");
+		logger.error(" Create this directory to configure grinder properties file. ");
+		System.exit(0);
+	}
+
 	/**
 	 * Set grinder properties
 	 */
@@ -321,64 +335,26 @@ public abstract class GrinderPropertiesConfigure extends AbstractMojo
 	{		
 		if (path == null) {		// try to find grinder properties file in the PATH_PROPERTIES_DIR
 			
+			// make sure we have a properties file
 			File[] config = new File(PATH_PROPERTIES_DIR).listFiles();
-			
 			if (config == null) {
-				if(logger.isDebugEnabled()){
-					logger.error("");
-					logger.error(" ----------------------------");
-					logger.error("|   Configuration ERROR!!!   |");
-					logger.error(" ----------------------------");
-					logger.error("");
-					logger.error(" Configuration directory " + PATH_PROPERTIES_DIR + " do not exists!        ");
-					logger.error("");
-					logger.error(" Create this directory to configure grinder properties file. ");
-					System.exit(0);
-				}
+				logConfigErrorAndExit("Configuration directory {} do not exists! ", PATH_PROPERTIES_DIR);
 			}
-			
+
+			// check the length f the array is not empty
 			if (config.length == 0) {
-				if(logger.isDebugEnabled()){
-					logger.error("");
-					logger.error(" ----------------------------");
-					logger.error("|   Configuration ERROR!!!   |");
-					logger.error(" ----------------------------");
-					logger.error("");
-					logger.error(" " + PATH_PROPERTIES_DIR + " is empty! ");
-					logger.error("");
-					logger.error(" Copy grinder properties file in this directory  ");
-					logger.error(" or set <path> from POM file. ");
-					System.exit(0);
-				}
+				logConfigErrorAndExit("{} is empty. Copy grinder properties file in this directory or set <path> from POM file. ", PATH_PROPERTIES_DIR);				
 			}
 			
+			// allow only one properties file for now
 			if (config.length > 1) {
-				if(logger.isDebugEnabled()){
-					logger.error("");
-					logger.error(" ----------------------------");
-					logger.error("|   Configuration ERROR!!!   |");
-					logger.error(" ----------------------------");
-					logger.error("");
-					logger.error(" " + PATH_PROPERTIES_DIR + " contain other files ");
-					logger.error(" beyond the grinder properties file! ");
-					System.exit(0);
-				}
+				logConfigErrorAndExit("{} contains other files. Only one grinder.properties file is allowed", PATH_PROPERTIES_DIR);							
 			}
 			
 			String properties = config[0].getName();
 			
 			if (!properties.endsWith(".properties")) {
-				if(logger.isDebugEnabled()){
-					logger.error("");
-					logger.error(" ----------------------------");
-					logger.error("|   Configuration ERROR!!!   |");
-					logger.error(" ----------------------------");
-					logger.error("");
-					logger.error(" " + PATH_PROPERTIES_DIR + "/" + properties  + " is not a grinder properties file! ");
-					logger.error("");
-					logger.error(" The extension of file must be .properties ");
-					System.exit(0);
-				}
+				logConfigErrorAndExit("{}/{} must have a '.properties' extension.", PATH_PROPERTIES_DIR, properties);														
 			}
 			String pathProp = PATH_PROPERTIES_DIR + File.separator + properties;
 			setPathProperties(pathProp);
@@ -393,17 +369,7 @@ public abstract class GrinderPropertiesConfigure extends AbstractMojo
 			is = new FileInputStream(pathProperties);
 			propertiesPlugin.load(is); 					
 		} catch (FileNotFoundException e) {
-			if(logger.isDebugEnabled()){
-				logger.error("");
-				logger.error(" ----------------------------");
-				logger.error("|   Configuration ERROR!!!   |");
-				logger.error(" ----------------------------");
-				logger.error("");
-				logger.error(" The grinder properties file path ");
-				logger.error(" " + pathProperties);
-				logger.error(" set into your POM file do not exists! ");
-				System.exit(0);
-			}
+			logConfigErrorAndExit("The grinder properties file path {} does not exist.", pathProperties);			
 		} catch (IOException e) {
 			e.printStackTrace();
 		} finally {
@@ -420,7 +386,7 @@ public abstract class GrinderPropertiesConfigure extends AbstractMojo
 		
 		setClassPath();
 		
-		logger.debug("--- Grinder properties file:  " + pathProperties);
+		logger.debug("--- Grinder properties file:  {}", pathProperties);
 	}
 	
 	private void extractGrinderProperty(Map propertiesSource) {
@@ -451,32 +417,11 @@ public abstract class GrinderPropertiesConfigure extends AbstractMojo
 			File[] jython = new File(PATH_TEST_DIR).listFiles();
 			
 			if (jython == null) {
-				if(logger.isDebugEnabled()){
-					logger.error("");
-					logger.error(" ----------------------------");
-					logger.error("|   Configuration ERROR!!!   |");
-					logger.error(" ----------------------------");
-					logger.error("");
-					logger.error(" " + PATH_TEST_DIR + " do not exists! ");
-					logger.error("");
-					logger.error(" Create this directory to configure test file. ");
-					System.exit(0);
-				}
+				logConfigErrorAndExit("{} do not exist. Create this directory to configure the test file.", PATH_TEST_DIR);				
 			}
 			
 			if (jython.length == 0) {
-				if(logger.isDebugEnabled()){
-					logger.error("");
-					logger.error(" ----------------------------");
-					logger.error("|   Configuration ERROR!!!   |");
-					logger.error(" ----------------------------");
-					logger.error("");
-					logger.error(" " + PATH_TEST_DIR + " is empty!  	      ");
-					logger.error("");
-					logger.error(" Copy test file in this directory  ");
-					logger.error(" or set <pathTest> from POM file. ");
-					System.exit(0);
-				}
+				logConfigErrorAndExit("{} is empty! Copy test files to this directory or set <pathTest> from POM file.", PATH_TEST_DIR);				
 			}		
 			
 			if (nameScript == null) {
@@ -502,21 +447,11 @@ public abstract class GrinderPropertiesConfigure extends AbstractMojo
 		testScript = new File(nameTest);
 		
 		if (!testScript.exists()) {
-			if (logger.isDebugEnabled()) {
-				logger.error("");
-				logger.error(" ----------------------------");
-				logger.error("|   Configuration ERROR!!!   |");
-				logger.error(" ----------------------------");
-				logger.error("");					
-				logger.error(" The test file path ");
-				logger.error(" " + nameTest);
-				logger.error(" set into your POM file do not exists!");
-				System.exit(0);
-			}
+			logConfigErrorAndExit("The test file path {} set in the POM does not exist.", nameTest);			
 		}
 		setTest(nameTest);
 		
-		logger.debug("--- Jython test file:  " + test);
+		logger.debug("--- Jython test file:  {}", test);
 	}
 	
 	/**
@@ -533,7 +468,7 @@ public abstract class GrinderPropertiesConfigure extends AbstractMojo
 		// set logDirectory
 		propertiesPlugin.setProperty("grinder.logDirectory", LOG_DIRECTORY);
 		
-		logger.debug("--- Log directory:  " + LOG_DIRECTORY);
+		logger.debug("--- Log directory:  {}", LOG_DIRECTORY);
 	}
 	
 	/**
@@ -555,10 +490,10 @@ public abstract class GrinderPropertiesConfigure extends AbstractMojo
 			daemonPeriod = DEFAULT_DAEMON_PERIOD;
 		}
 		
-		logger.debug("--- Agent -daemon option:  " + daemonOption);
+		logger.debug("--- Agent -daemon option: {} ", daemonOption);
 		
 		if (daemonOption == true) {
-			logger.debug("--- Agent sleep time:  " + daemonPeriod);
+			logger.debug("--- Agent sleep time:  {}", daemonPeriod);
 		}
 	}
 	
@@ -582,7 +517,7 @@ public abstract class GrinderPropertiesConfigure extends AbstractMojo
 			out = new BufferedWriter(new FileWriter(pathProperties));
 			propertiesPlugin.store(out, "Grinder Agent Properties");
 		} catch (FileNotFoundException e) {
-			System.out.println("File " + pathProperties + " does not exists!!!");
+			logger.error("File {} does not exists!", pathProperties, e);
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
