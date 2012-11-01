@@ -14,6 +14,8 @@
 
 package com.fides;
 
+import java.io.File;
+
 import net.grinder.common.GrinderException;
 import net.grinder.engine.agent.AgentDaemon;
 import net.grinder.engine.agent.AgentImplementation;
@@ -60,37 +62,40 @@ public class Agent extends GrinderPropertiesConfigure
 				
 		AgentDaemon daemon_agent;			
 		AgentImplementation default_agent;	
-		try {
-			if (isDaemonOption()) {
-				if(logger.isDebugEnabled()){
-					logger.debug("");
-					logger.debug(" ---------------------------");
-					logger.debug("|   Create an AgentDaemon   |");
-					logger.debug(" ---------------------------");
+		for ( File fileProperties : getPropertiesFiles() ) {
+			try {
+
+				if (isDaemonOption()) {
+					if(logger.isDebugEnabled()){
+						logger.debug("");
+						logger.debug(" ---------------------------");
+						logger.debug("|   Create an AgentDaemon   |");
+						logger.debug(" ---------------------------");
+					}
+
+					daemon_agent =
+							new AgentDaemon(
+									logger, 
+									getDaemonPeriod(),
+									new AgentImplementation(logger, fileProperties, false));
+					daemon_agent.run();
+					daemon_agent.shutdown();
+				} 
+				else
+				{
+					if(logger.isDebugEnabled()){
+						logger.debug("");
+						logger.debug(" -----------------------------------");
+						logger.debug("|   Create an AgentImplementation   |");
+						logger.debug(" -----------------------------------");
+					}								
+					default_agent = new AgentImplementation(logger, fileProperties, true);
+					default_agent.run();
+					default_agent.shutdown();
 				}
-				
-				daemon_agent =
-					new AgentDaemon(
-							logger, 
-							getDaemonPeriod(),
-						 	new AgentImplementation(logger, getFileProperties(), false));
-				daemon_agent.run();
-				daemon_agent.shutdown();
-			} 
-			else
-			{
-				if(logger.isDebugEnabled()){
-					logger.debug("");
-					logger.debug(" -----------------------------------");
-					logger.debug("|   Create an AgentImplementation   |");
-					logger.debug(" -----------------------------------");
-				}								
-				default_agent = new AgentImplementation(logger, getFileProperties(), true);
-				default_agent.run();
-				default_agent.shutdown();
+			} catch (GrinderException e) {
+				e.printStackTrace();
 			}
-		} catch (GrinderException e) {
-			e.printStackTrace();
 		}
 	}
 }

@@ -22,14 +22,19 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.ArtifactUtils;
 import org.apache.maven.plugin.AbstractMojo;
@@ -84,14 +89,16 @@ public abstract class GrinderPropertiesConfigure extends AbstractMojo
 	// grinder properties file path
 	private String pathProperties = null;									
 
-	// jython test path 
-	private String test = null;												
+	// jython test paths 
+	private Set<String> tests = null;												
 
 	// value of agent daemon option
 	private boolean daemonOption = DEFAULT_DAEMON_OPTION;							
 	
 	// value of agent sleep time
 	private long daemonPeriod = DEFAULT_DAEMON_PERIOD;								 
+	
+	private Set<File> propertiesFiles = new HashSet<File>();
 	
 	// GrinderPropertiesConfigure logger
 	private final Logger logger = LoggerFactory.getLogger("GrinderPropertiesConfigure");
@@ -190,6 +197,10 @@ public abstract class GrinderPropertiesConfigure extends AbstractMojo
 		return TCP_PROXY_DIRECTORY;
 	}	
 	
+	public Set<File> getPropertiesFiles() {
+		return this.propertiesFiles;
+	}
+	
 	public Properties getPropertiesPlugin() {
 		return propertiesPlugin;
 	}
@@ -214,12 +225,15 @@ public abstract class GrinderPropertiesConfigure extends AbstractMojo
 		this.pathProperties = pathProperties;
 	}
 	
-	public String getTest() {
-		return test;
+	public Set<String> getTests() {
+		return tests;
 	}
 
-	public void setTest(String test) {
-		this.test = test;
+	public void addTest(String test) {
+		if ( this.tests == null ) {
+			this.tests = new HashSet<String>();
+		}
+		this.tests.add(test);
 	}
 	
 	public boolean isDaemonOption() {
@@ -408,50 +422,31 @@ public abstract class GrinderPropertiesConfigure extends AbstractMojo
 	 */
 	private void initTestFile() 
 	{
-		File testScript = null;		// test script configured
-		String nameTest = null;		// test script path
-		String nameScript = propertiesPlugin.getProperty("grinder.script");
-		
-		if (pathTest == null) {		//  try to find grinder test file in the PATH_TEST_DIR 
-			
-			File[] jython = new File(PATH_TEST_DIR).listFiles();
-			
-			if (jython == null) {
-				logConfigErrorAndExit("{} do not exist. Create this directory to configure the test file.", PATH_TEST_DIR);				
+		// if pathTest == null, pathTest = PATH_TEST_DIR.
+		if ( StringUtils.isBlank(pathTest)) {
+			pathTest = PATH_TEST_DIR;
+		}
+
+		if ( propertiesPlugin.containsKey("grinder.script")) {
+			String [] names = StringUtils.split(propertiesPlugin.getProperty("grinder.script"), ',');
+			for ( String name : names ) {
+				addTest(name);
 			}
-			
+		}  else {
+			File filePathTest = new File(pathTest);
+			if (!filePathTest.exists() ) {
+				logConfigErrorAndExit("{} do not exist. Create this directory to configure the test file.", pathTest);				
+			}
+			File[] jython = filePathTest.listFiles();
 			if (jython.length == 0) {
-				logConfigErrorAndExit("{} is empty! Copy test files to this directory or set <pathTest> from POM file.", PATH_TEST_DIR);				
-			}		
+				logConfigErrorAndExit("{} is empty! Copy test files to this directory or set <pathTest> from POM file.", pathTest);				
+			}	
+			for ( File jy : jython ){
+				addTest(jy.getName());
+			}				
+		}
 			
-			if (nameScript == null) {
-				nameTest = PATH_TEST_DIR + File.separator + 
-						   "grinder.py";
-			}
-			else {
-				nameTest = PATH_TEST_DIR + File.separator + 
-						   nameScript;
-			}
-		}
-		else {
-			if (nameScript == null) {
-				nameTest = pathTest + File.separator + 
-						   "grinder.py";
-			}
-			else {
-				nameTest = pathTest + File.separator + 	
-						nameScript;						
-			}
-		}	
-		
-		testScript = new File(nameTest);
-		
-		if (!testScript.exists()) {
-			logConfigErrorAndExit("The test file path {} set in the POM does not exist.", nameTest);			
-		}
-		setTest(nameTest);
-		
-		logger.debug("--- Jython test file:  {}", test);
+		logger.debug("--- Jython test file:  {}", tests);
 	}
 	
 	/**
@@ -508,54 +503,26 @@ public abstract class GrinderPropertiesConfigure extends AbstractMojo
 			configDirectory.mkdirs();								
 		}
 		
-		// copy grinder properties to configuration directory
-		String pathProperties = CONFIG + File.separator +
-								"grinder_agent.properties";
+
 		BufferedWriter out;
-
-		try {
-			out = new BufferedWriter(new FileWriter(pathProperties));
-			propertiesPlugin.store(out, "Grinder Agent Properties");
-		} catch (FileNotFoundException e) {
-			logger.error("File {} does not exists!", pathProperties, e);
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-		// create configuration file
-		fileProperties = new File(pathProperties); 
-
-		// copy test file to configuration directory		
-		if (test != null) {
-			String line = null;
-			String dest_test = CONFIG + File.separator +
-							   propertiesPlugin.getProperty("grinder.script");
-			BufferedReader source = null;
-			BufferedWriter dest = null;
 	
-			try {
-				source = new BufferedReader(new FileReader(test));
-				dest = new BufferedWriter(new FileWriter(dest_test));
-				line = source.readLine();
-				while (line != null) {
-					dest.write(line + "\n");
-					line = source.readLine();
-				}
-			} catch (FileNotFoundException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
-			} finally {
-				if (source != null || dest != null) {
-					try {
-						source.close();
-						dest.close();
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
-				}
+		try {
+			
+			Properties propCopy;
+			for ( String fileName : tests ) {
+				logger.debug("using file {} for copy", fileName);
+				File file = new File(CONFIG,"grinder_agent_"+FilenameUtils.getBaseName(fileName)+".properties");
+				propertiesFiles.add(file);
+				out = new BufferedWriter(new FileWriter(file));
+				// need to iterate keys and copy to new propertes
+				propCopy = new Properties(propertiesPlugin);
+				propCopy.put("grinder.script", fileName);
+				propCopy.store(out, "Grinder Agent Properties for " + fileName);
+				FileUtils.copyFile(new File(pathTest,fileName), new File(CONFIG,fileName));
 			}
+		} catch(IOException ioe) {
+			ioe.printStackTrace();
+			logConfigErrorAndExit("Could not copy files: {}", tests);
 		}
 		
 		logger.debug("--- Grinderplugin to be configured ---");
