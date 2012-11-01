@@ -508,17 +508,21 @@ public abstract class GrinderPropertiesConfigure extends AbstractMojo
 	
 		try {
 			
-			Properties propCopy;
+			
 			for ( String fileName : tests ) {
 				logger.debug("using file {} for copy", fileName);
 				File file = new File(CONFIG,"grinder_agent_"+FilenameUtils.getBaseName(fileName)+".properties");
-				propertiesFiles.add(file);
+				File scriptDest = new File(CONFIG,fileName);
+				propertiesFiles.add(file.getAbsoluteFile());
 				out = new BufferedWriter(new FileWriter(file));
 				// need to iterate keys and copy to new propertes
-				propCopy = new Properties(propertiesPlugin);
-				propCopy.put("grinder.script", fileName);
-				propCopy.store(out, "Grinder Agent Properties for " + fileName);
-				FileUtils.copyFile(new File(pathTest,fileName), new File(CONFIG,fileName));
+				
+				propertiesPlugin.put("grinder.script", scriptDest.getAbsolutePath());
+
+
+				propertiesPlugin.store(out, "Grinder Agent Properties for " + fileName);
+				
+				FileUtils.copyFile(new File(pathTest,fileName), scriptDest);
 			}
 		} catch(IOException ioe) {
 			ioe.printStackTrace();

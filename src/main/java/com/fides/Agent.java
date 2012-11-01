@@ -15,11 +15,14 @@
 package com.fides;
 
 import java.io.File;
+import java.io.IOException;
 
 import net.grinder.common.GrinderException;
 import net.grinder.engine.agent.AgentDaemon;
 import net.grinder.engine.agent.AgentImplementation;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.LineIterator;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 
@@ -63,6 +66,8 @@ public class Agent extends GrinderPropertiesConfigure
 		AgentDaemon daemon_agent;			
 		AgentImplementation default_agent;	
 		for ( File fileProperties : getPropertiesFiles() ) {
+			logger.debug("working file: {}", fileProperties.getName());
+			dumpPropfileContents(fileProperties);
 			try {
 
 				if (isDaemonOption()) {
@@ -96,6 +101,21 @@ public class Agent extends GrinderPropertiesConfigure
 			} catch (GrinderException e) {
 				e.printStackTrace();
 			}
+		}
+	}
+	
+	private void dumpPropfileContents(File propFile) {
+		LineIterator iter = null;
+		try {
+			iter = FileUtils.lineIterator(propFile);
+			while ( iter.hasNext()) {
+				logger.debug(iter.next());
+			}
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+		} finally {
+			if ( iter != null )
+				iter.close();
 		}
 	}
 }
