@@ -64,7 +64,10 @@ public class GrinderConsole extends GrinderPropertiesConfigure
 		{
 			super(logger, USAGE);
 
-			m_consoleFoundation = new ConsoleFoundation(resources, logger, false);			
+			Class<? extends ConsoleFoundation.UI> ui = ConsoleUI.class;
+
+			m_consoleFoundation = new ConsoleFoundation(resources, logger, true);
+			m_consoleFoundation.createUI(ui);		
 		}
 
 		private void run() 
